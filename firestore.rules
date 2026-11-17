@@ -1,0 +1,275 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Reusable Hardened Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidOptionalId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]*$');
+    }
+
+    function isValidDateString(d) {
+      return d is string && d.size() <= 20 && d.matches('^(\\d{4}-\\d{2}-\\d{2})?$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isSignedIn() && existing().ownerId == request.auth.uid;
+    }
+
+    // --- Entity Validation Blueprints ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'uid', 'displayName', 'email', 'title', 'phone',
+          'location', 'website', 'hourlyRate', 'currency', 'bio',
+          'photoURL', 'createdAt', 'updatedAt'
+        ])
+        && data.uid is string && data.uid == userId && data.uid == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.email is string && data.email.size() <= 160
+        && (!('title' in data) || (data.title is string && data.title.size() <= 80))
+        && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
+        && (!('location' in data) || (data.location is string && data.location.size() <= 80))
+        && (!('website' in data) || (data.website is string && data.website.size() <= 200))
+        && (!('hourlyRate' in data) || (data.hourlyRate is number && data.hourlyRate >= 0 && data.hourlyRate <= 1000000))
+        && (!('currency' in data) || (data.currency is string && data.currency.size() <= 10 && data.currency in ['TWD', 'USD', 'HKD', 'JPY']))
+        && (!('bio' in data) || (data.bio is string && data.bio.size() <= 500))
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidClient(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'company', 'email', 'phone', 'notes', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && (!('company' in data) || (data.company is string && data.company.size() <= 100))
+        && (!('email' in data) || (data.email is string && data.email.size() <= 160))
+        && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'status', 'dueDate', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'clientId', 'clientName', 'status', 'dueDate', 'budget', 'description', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && (!('clientId' in data) || isValidOptionalId(data.clientId))
+        && (!('clientName' in data) || (data.clientName is string && data.clientName.size() <= 100))
+        && data.status is string && data.status.size() <= 20 && data.status in ['in_progress', 'completed']
+        && isValidDateString(data.dueDate)
+        && (!('budget' in data) || (data.budget is number && data.budget >= 0 && data.budget <= 100000000))
+        && (!('description' in data) || (data.description is string && data.description.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['ownerId', 'title', 'status', 'dueDate', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'ownerId', 'projectId', 'projectName', 'title', 'status', 'dueDate', 'notes', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && (!('projectId' in data) || isValidOptionalId(data.projectId))
+        && (!('projectName' in data) || (data.projectName is string && data.projectName.size() <= 120))
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
+        && data.status is string && data.status.size() <= 20 && data.status in ['todo', 'completed']
+        && isValidDateString(data.dueDate)
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWorkLog(data) {
+      return data.keys().hasAll(['ownerId', 'title', 'hours', 'workDate', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'ownerId', 'title', 'projectId', 'projectName', 'clientName', 'hours', 'workDate', 'notes', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
+        && (!('projectId' in data) || isValidOptionalId(data.projectId))
+        && (!('projectName' in data) || (data.projectName is string && data.projectName.size() <= 120))
+        && (!('clientName' in data) || (data.clientName is string && data.clientName.size() <= 100))
+        && data.hours is number && data.hours >= 0 && data.hours <= 1000
+        && isValidDateString(data.workDate)
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // --- Relational Integrity Checks ---
+    function clientBelongsToCaller(clientId) {
+      return clientId == '' || (
+        exists(/databases/$(database)/documents/clients/$(clientId))
+        && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid
+      );
+    }
+
+    function projectBelongsToCaller(projectId) {
+      return projectId == '' || (
+        exists(/databases/$(database)/documents/projects/$(projectId))
+        && get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid
+      );
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'email', 'title', 'phone', 'location',
+          'website', 'hourlyRate', 'currency', 'bio', 'photoURL', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    match /clients/{clientId} {
+      allow get: if isValidId(clientId) && isDocOwner();
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(clientId)
+        && isValidClient(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(clientId)
+        && isDocOwner()
+        && isValidClient(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'company', 'email', 'phone', 'notes', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(clientId) && isDocOwner();
+    }
+
+    match /projects/{projectId} {
+      allow get: if isValidId(projectId) && isDocOwner();
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(projectId)
+        && isValidProject(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (!('clientId' in incoming()) || clientBelongsToCaller(incoming().clientId));
+      allow update: if isVerifiedUser()
+        && isValidId(projectId)
+        && isDocOwner()
+        && isValidProject(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          || (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'clientId', 'clientName', 'status', 'dueDate', 'budget', 'description', 'updatedAt'
+            ])
+            && (!('clientId' in incoming()) || clientBelongsToCaller(incoming().clientId))
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(projectId) && isDocOwner();
+    }
+
+    match /tasks/{taskId} {
+      allow get: if isValidId(taskId) && isDocOwner();
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(taskId)
+        && isValidTask(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (!('projectId' in incoming()) || projectBelongsToCaller(incoming().projectId));
+      allow update: if isVerifiedUser()
+        && isValidId(taskId)
+        && isDocOwner()
+        && isValidTask(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          || (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'projectId', 'projectName', 'title', 'status', 'dueDate', 'notes', 'updatedAt'
+            ])
+            && (!('projectId' in incoming()) || projectBelongsToCaller(incoming().projectId))
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(taskId) && isDocOwner();
+    }
+
+    match /workLogs/{workLogId} {
+      allow get: if isValidId(workLogId) && isDocOwner();
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(workLogId)
+        && isValidWorkLog(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (!('projectId' in incoming()) || projectBelongsToCaller(incoming().projectId));
+      allow update: if isVerifiedUser()
+        && isValidId(workLogId)
+        && isDocOwner()
+        && isValidWorkLog(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'projectId', 'projectName', 'clientName', 'hours', 'workDate', 'notes', 'updatedAt'
+        ])
+        && (!('projectId' in incoming()) || projectBelongsToCaller(incoming().projectId));
+      allow delete: if isVerifiedUser() && isValidId(workLogId) && isDocOwner();
+    }
+  }
+}

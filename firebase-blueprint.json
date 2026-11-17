@@ -1,0 +1,338 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Freelancer personal profile and workspace settings.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Freelancer display name.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact email address.",
+          "maxLength": 160
+        },
+        "title": {
+          "type": "string",
+          "description": "Professional role or specialty.",
+          "maxLength": 80
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number.",
+          "maxLength": 40
+        },
+        "location": {
+          "type": "string",
+          "description": "City or timezone location.",
+          "maxLength": 80
+        },
+        "website": {
+          "type": "string",
+          "description": "Portfolio or personal website URL.",
+          "maxLength": 200
+        },
+        "hourlyRate": {
+          "type": "number",
+          "description": "Standard hourly billing rate."
+        },
+        "currency": {
+          "type": "string",
+          "description": "Preferred currency code.",
+          "enum": ["TWD", "USD", "HKD", "JPY"],
+          "maxLength": 10
+        },
+        "bio": {
+          "type": "string",
+          "description": "Short professional biography.",
+          "maxLength": 500
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Profile avatar URL.",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": ["uid", "displayName", "email", "createdAt", "updatedAt"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "A freelance client or organization.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Owner freelancer UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Client or contact name.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "company": {
+          "type": "string",
+          "description": "Company or brand name.",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "description": "Client contact email.",
+          "maxLength": 160
+        },
+        "phone": {
+          "type": "string",
+          "description": "Client contact phone.",
+          "maxLength": 40
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional client notes.",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": ["ownerId", "name", "createdAt", "updatedAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A freelance project with status and deadline.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Owner freelancer UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Project title.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Optional linked Client document ID.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]*$"
+        },
+        "clientName": {
+          "type": "string",
+          "description": "Display name of the client.",
+          "maxLength": 100
+        },
+        "status": {
+          "type": "string",
+          "description": "Project workflow status.",
+          "enum": ["in_progress", "completed"],
+          "maxLength": 20
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Project deadline in YYYY-MM-DD format.",
+          "maxLength": 20,
+          "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$"
+        },
+        "budget": {
+          "type": "number",
+          "description": "Estimated project fee or budget."
+        },
+        "description": {
+          "type": "string",
+          "description": "Project scope or notes.",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": ["ownerId", "name", "status", "dueDate", "createdAt", "updatedAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "An actionable freelance task linked optionally to a project.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Owner freelancer UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Optional linked Project document ID.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]*$"
+        },
+        "projectName": {
+          "type": "string",
+          "description": "Cached display name of the linked project.",
+          "maxLength": 120
+        },
+        "title": {
+          "type": "string",
+          "description": "Task title.",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "status": {
+          "type": "string",
+          "description": "Task completion status.",
+          "enum": ["todo", "completed"],
+          "maxLength": 20
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Task due date in YYYY-MM-DD format.",
+          "maxLength": 20,
+          "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Task implementation notes.",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": ["ownerId", "title", "status", "dueDate", "createdAt", "updatedAt"]
+    },
+    "WorkLog": {
+      "title": "WorkLog",
+      "description": "A logged freelance work session or deliverable entry.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Owner freelancer UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Work item title or summary.",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Optional linked Project document ID.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]*$"
+        },
+        "projectName": {
+          "type": "string",
+          "description": "Linked project name.",
+          "maxLength": 120
+        },
+        "clientName": {
+          "type": "string",
+          "description": "Associated client name.",
+          "maxLength": 100
+        },
+        "hours": {
+          "type": "number",
+          "description": "Hours spent on this work item."
+        },
+        "workDate": {
+          "type": "string",
+          "description": "Work date in YYYY-MM-DD format.",
+          "maxLength": 20,
+          "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Details about the work performed.",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": ["ownerId", "title", "hours", "workDate", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private freelancer profile settings, strictly readable and writable only by the owning user."
+    },
+    "/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Freelance clients owned by a specific freelancer."
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Freelance projects owned by a specific freelancer."
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Tasks belonging to a specific freelancer, optionally linked to a project."
+    },
+    "/workLogs/{workLogId}": {
+      "schema": { "$ref": "#/entities/WorkLog" },
+      "description": "Work log entries recorded by a specific freelancer."
+    }
+  }
+}

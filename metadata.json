@@ -1,0 +1,6 @@
+{
+  "name": "接案工作台 — 自由接案工作者儀表板",
+  "description": "專為自由接案工作者設計的現代化專案、客戶、任務與工作紀錄管理儀表板，整合 Firebase Firestore 即時同步。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
